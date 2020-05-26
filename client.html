@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Socket.IO chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font: 13px Helvetica, Arial;
+        }
+
+        #chain {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        #transactions {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        li {
+            padding: 5px 10px;
+        }
+
+        li:nth-child(odd) {
+            background: #eee;
+        }
+    </style>
+</head>
+
+<body>
+    <button id="mine">Mine</button>
+    <button id="add_new_transaction">New transaction</button>
+
+    <ul id="chain"></ul>
+    <ul id="transactions"></ul>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+
+    <script>
+        $(function () {
+            var socket = io('http://localhost:3000');
+
+            $('#add_new_transaction').click(function () {
+                var data = {
+                    sender: "Đặng Thanh Tuấn",
+                    receiver: "Đặng Tiến Đạt",
+                    amount: 10
+                }
+                socket.emit('ADD_TRANSACTION', data);
+                return false;
+            });
+
+            socket.on('UPDATED_TRANSACTIONS', function (transactions) {
+                $('#transactions').html('');
+                transactions.map(t => $('#transactions').append($('<li>').text(JSON.stringify(t))))
+                window.scrollTo(0, document.body.scrollHeight);
+            });
+
+            socket.on('update_chain', function (chain) {
+                chain.map(t => $('#chain').append($('<li>').text(JSON.stringify(t))))
+                window.scrollTo(0, document.body.scrollHeight);
+            });
+        });
+    </script>
+</body>
+
+</html>
