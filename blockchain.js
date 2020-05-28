@@ -96,6 +96,11 @@ class Blockchain {
     this.pendingTransactions = [];
   }
 
+  addNewBlock(block) {
+    this.chain.push(block);
+    this.pendingTransactions = [];
+  }
+
   addTransaction(transaction) {
     if (!transaction.fromAddress || !transaction.toAddress) {
       throw new Error('Transaction must include from and to address');
@@ -128,6 +133,16 @@ class Blockchain {
         if (trans.toAddress === address) {
           balance += trans.amount;
         }
+      }
+    }
+
+    for (const transaction of this.pendingTransactions) {
+      if (transaction.fromAddress === address) {
+        balance -= transaction.amount;
+      }
+
+      if (transaction.toAddress === address) {
+        balance += transaction.amount;
       }
     }
 

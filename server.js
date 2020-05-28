@@ -4,6 +4,8 @@ const httpServer = require('http').Server(app);
 const io = require('socket.io')(httpServer);
 const EC = require('elliptic').ec;
 const ec = new EC('secp256k1');
+const cors = require('cors');
+app.use(cors());
 
 const { Blockchain, Transaction } = require('./blockchain');
 
@@ -11,17 +13,14 @@ const PORT = 3000;
 
 app.use(bodyParser.json());
 
-const myKey = ec.keyFromPrivate('7c4c45907dec40c91bab3480c39032e90049f1a44f3e18c3e07c23e3273995cf');
-
-const myWalletAddress = myKey.getPublic('hex');
-
 const BitcoinFake = new Blockchain();
 
-app.post('/register', (req, res) => {
-    const key = ec.genKeyPair();
-    const publicKey = key.getPublic('hex');
-    const privateKey = key.getPrivate('hex');
-    BitcoinFake.minePendingTransactions(publicKey);
+app.post('/new_block', (req, res) => {
+    const { block } = req.body;
+
+    BitcoinFake.addNewBlock(block);
+
+    io.sockets.emit('UPDATED_TRANSACTIONS', BitcoinFake.pendingTransactions);
 
     res.status(200).json({ publicKey, privateKey });
 });
@@ -40,14 +39,32 @@ app.post('/transactions', (req, res) => {
     tx.signTransaction(myKey);
     BitcoinFake.addTransaction(tx);
 
-    res.status(200).json({});
+    io.sockets.emit('UPDATED_TRANSACTIONS', BitcoinFake.pendingTransactions);
+
+    res.status(200).json({ tx });
 });
 
 io.on('connection', (socket) => {
-    socket.on('ADD_TRANSACTION', (transaction) => {
-        transactions.push(transaction);
-        console.log(transaction);
-        io.sockets.emit('UPDATED_TRANSACTIONS', transactions);
+    console.log(`${socket.id} connected`)
+    socket.emit('CURRENT_BLOCKCHAIN', BitcoinFake);
+
+    socket.on('CREATE_NEW_WALLET', () => {
+        const key = ec.genKeyPair();
+        const publicKey = key.getPublic('hex');
+        const privateKey = key.getPrivate('hex');
+        BitcoinFake.minePendingTransactions(publicKey);
+
+        socket.emit('NEW_WALLET', { publicKey, privateKey })
+    });
+
+    socket.on('CREATE_NEW_TRANSACTION', ({ privateKey, sender, receiver, amount }) => {
+        const myKey = ec.keyFromPrivate(privateKey);
+
+        const tx = new Transaction(sender, receiver, amount);
+        tx.signTransaction(myKey);
+        BitcoinFake.addTransaction(tx);
+
+        io.sockets.emit('UPDATED_TRANSACTIONS', BitcoinFake.pendingTransactions);
     });
 });
 
