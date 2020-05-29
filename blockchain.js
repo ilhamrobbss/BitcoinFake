@@ -10,6 +10,14 @@ class Transaction {
     this.timestamp = Date.now();
   }
 
+  createTo({ fromAddress, toAddress, amount, timestamp, signature }) {
+    this.fromAddress = fromAddress;
+    this.toAddress = toAddress;
+    this.amount = amount;
+    this.timestamp = timestamp;
+    this.signature = signature;
+  }
+
   calculateHash() {
     return crypto.createHash('sha256').update(this.fromAddress + this.toAddress + this.amount + this.timestamp).digest('hex');
   }
@@ -44,6 +52,20 @@ class Block {
     this.transactions = transactions;
     this.nonce = 0;
     this.hash = this.calculateHash();
+  }
+
+  createTo({ previousHash, timestamp, transactions, nonce, hash }) {
+    this.previousHash = previousHash;
+    this.timestamp = timestamp;
+    this.nonce = nonce;
+    this.hash = hash;
+    let _transactions = [];
+    transactions.forEach(element => {
+      let transaction = new Transaction()
+      transaction.createTo(element);
+      _transactions.push(transaction);
+    });
+    this.transactions = _transactions;
   }
 
   calculateHash() {
@@ -84,38 +106,54 @@ class Blockchain {
     return this.chain[this.chain.length - 1];
   }
 
-  minePendingTransactions(miningRewardAddress) {
+  addAirdropReward(miningRewardAddress) {
     const rewardTx = new Transaction(null, miningRewardAddress, this.miningReward);
-    this.pendingTransactions.push(rewardTx);
 
-    const block = new Block(Date.now(), this.pendingTransactions, this.getLatestBlock().hash);
-    block.mineBlock(this.difficulty);
+    const block = new Block(Date.now(), [rewardTx], this.getLatestBlock().hash);
+    block.mineBlock(0);
 
     this.chain.push(block);
-
-    this.pendingTransactions = [];
   }
 
-  addNewBlock(block) {
+  addBlock(newblock) {
+    const block = new Block();
+    block.createTo(newblock);
+
+    if (block.calculateHash() !== block.hash) {
+      console.log('Hash invalid');
+      return;
+    }
+
+    if (!block.hasValidTransactions()) {
+      console.log('Invalid transactions in this block');
+      return
+    }
+
     this.chain.push(block);
-    this.pendingTransactions = [];
   }
 
-  addTransaction(transaction) {
+  addTransaction(newTransaction) {
+    let transaction = new Transaction();
+    transaction.createTo(newTransaction);
+
     if (!transaction.fromAddress || !transaction.toAddress) {
-      throw new Error('Transaction must include from and to address');
+      console.log('Transaction must include from and to address');
+      return;
     }
 
     if (!transaction.isValid()) {
-      throw new Error('Cannot add invalid transaction to chain');
+      console.log('Cannot add invalid transaction to chain');
+      return;
     }
 
     if (transaction.amount <= 0) {
-      throw new Error('Transaction amount should be higher than 0');
+      console.log('Transaction amount should be higher than 0');
+      return;
     }
 
     if (this.getBalanceOfAddress(transaction.fromAddress) < transaction.amount) {
-      throw new Error('Not enough balance');
+      console.log('Not enough balance');
+      return;
     }
 
     this.pendingTransactions.push(transaction);
