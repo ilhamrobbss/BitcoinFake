@@ -8,14 +8,16 @@ class Transaction {
     this.toAddress = toAddress;
     this.amount = amount;
     this.timestamp = Date.now();
+    this.TXID = crypto.randomBytes(32).toString('hex');
   }
 
-  createTo({ fromAddress, toAddress, amount, timestamp, signature }) {
+  createTo({ fromAddress, toAddress, amount, timestamp, signature, TXID }) {
     this.fromAddress = fromAddress;
     this.toAddress = toAddress;
     this.amount = amount;
     this.timestamp = timestamp;
     this.signature = signature;
+    this.TXID = TXID;
   }
 
   calculateHash() {
@@ -93,21 +95,22 @@ class Block {
 class Blockchain {
   constructor() {
     this.chain = [this.createGenesisBlock()];
-    this.difficulty = 2;
+    this.difficulty = 4;
     this.pendingTransactions = [];
-    this.miningReward = 100;
+    this.miningReward = 1;
+    this.airdropReward = 100;
   }
 
   createGenesisBlock() {
-    return new Block(Date.parse('2017-01-01'), [], '0');
+    return new Block(Date.now(), [], '0');
   }
 
   getLatestBlock() {
     return this.chain[this.chain.length - 1];
   }
 
-  addAirdropReward(miningRewardAddress) {
-    const rewardTx = new Transaction(null, miningRewardAddress, this.miningReward);
+  addAirdropReward(publicKey) {
+    const rewardTx = new Transaction(null, publicKey, this.airdropReward);
 
     const block = new Block(Date.now(), [rewardTx], this.getLatestBlock().hash);
     block.mineBlock(0);
@@ -115,7 +118,7 @@ class Blockchain {
     this.chain.push(block);
   }
 
-  addBlock(newblock) {
+  addBlock(newblock, publicKey) {
     const block = new Block();
     block.createTo(newblock);
 
@@ -128,8 +131,15 @@ class Blockchain {
       console.log('Invalid transactions in this block');
       return
     }
-
+    
     this.chain.push(block);
+
+    const rewardTx = new Transaction(null, publicKey, this.miningReward);
+
+    const blockReward = new Block(Date.now(), [rewardTx], this.getLatestBlock().hash);
+    blockReward.mineBlock(0);
+
+    this.chain.push(blockReward);
   }
 
   addTransaction(newTransaction) {
@@ -138,6 +148,11 @@ class Blockchain {
 
     if (!transaction.fromAddress || !transaction.toAddress) {
       console.log('Transaction must include from and to address');
+      return;
+    }
+
+    if (transaction.fromAddress === transaction.toAddress) {
+      console.log('Receiver address is invalid');
       return;
     }
 
@@ -163,24 +178,24 @@ class Blockchain {
     let balance = 0;
 
     for (const block of this.chain) {
-      for (const trans of block.transactions) {
-        if (trans.fromAddress === address) {
-          balance -= trans.amount;
+      for (const transaction of block.transactions) {
+        if (transaction.fromAddress === address) {
+          balance -= +transaction.amount;
         }
 
-        if (trans.toAddress === address) {
-          balance += trans.amount;
+        if (transaction.toAddress === address) {
+          balance += +transaction.amount;
         }
       }
     }
 
     for (const transaction of this.pendingTransactions) {
       if (transaction.fromAddress === address) {
-        balance -= transaction.amount;
+        balance -= +transaction.amount;
       }
 
       if (transaction.toAddress === address) {
-        balance += transaction.amount;
+        balance += +transaction.amount;
       }
     }
 

@@ -1,4 +1,5 @@
 const app = require('express')();
+const crypto = require('crypto');
 const bodyParser = require('body-parser');
 const httpServer = require('http').Server(app);
 const io = require('socket.io')(httpServer);
@@ -45,12 +46,19 @@ io.on('connection', (socket) => {
         if (transactions.length > 0) {
             socket.emit('TRANSACTIONS_NEED_TO_MINE', transactions);
         }
+
+        io.sockets.emit('UPDATED_TRANSACTIONS', BitcoinFake.pendingTransactions);
     });
 
-    socket.on('MINED', (block) => {
-        BitcoinFake.addBlock(block);
+    socket.on('MINED', (block, publicKey) => {
+        BitcoinFake.addBlock(block, publicKey);
 
+        socket.emit('REWARD', BitcoinFake.miningReward);
         io.sockets.emit('UPDATED_BLOCKCHAIN', BitcoinFake);
+    });
+
+    socket.on('CHECK_BALANCE', (publicKey) => {
+        socket.emit('BALANCE_RESULT', BitcoinFake.getBalanceOfAddress(publicKey));
     });
 });
 
