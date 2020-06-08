@@ -11,7 +11,7 @@ app.use(cors());
 
 const { Blockchain, Transaction } = require('./blockchain');
 
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
