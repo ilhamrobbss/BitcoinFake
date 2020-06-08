@@ -216,6 +216,18 @@ class Blockchain {
     return txs;
   }
 
+  getAllTransactionsPenddingForWallet(address) {
+    const txs = [];
+
+    for (const tx of this.pendingTransactions) {
+        if (tx.fromAddress === address || tx.toAddress === address) {
+            txs.push(tx);
+        }
+    }
+
+    return txs;
+}
+
   isChainValid() {
     const realGenesis = JSON.stringify(this.createGenesisBlock());
 

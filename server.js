@@ -11,7 +11,7 @@ app.use(cors());
 
 const { Blockchain, Transaction } = require('./blockchain');
 
-const PORT = 3000;
+const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
@@ -25,7 +25,7 @@ io.on('connection', (socket) => {
         const key = ec.genKeyPair();
         const publicKey = key.getPublic('hex');
         const privateKey = key.getPrivate('hex');
-        
+
         BitcoinFake.addAirdropReward(publicKey);
         const balance = BitcoinFake.getBalanceOfAddress(publicKey);
 
@@ -59,6 +59,14 @@ io.on('connection', (socket) => {
 
     socket.on('CHECK_BALANCE', (publicKey) => {
         socket.emit('BALANCE_RESULT', BitcoinFake.getBalanceOfAddress(publicKey));
+    });
+
+    socket.on('EXPLORE_TRANSACTION', (publicKey) => {
+        let tx = [];
+        tx = tx.concat(BitcoinFake.getAllTransactionsForWallet(publicKey));
+        tx = tx.concat(BitcoinFake.getAllTransactionsPenddingForWallet(publicKey));
+        socket.emit('EXPLORE_TRANSACTION_RESULT', tx);
+        console.log(tx)
     });
 });
 
